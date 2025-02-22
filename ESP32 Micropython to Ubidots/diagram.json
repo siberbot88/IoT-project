@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "author": "Francis Okechukwu",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 52.79,
+      "left": -4.24,
+      "attrs": { "env": "micropython-20220618-v1.19.1" }
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht1",
+      "top": -28.5,
+      "left": 167.4,
+      "attrs": { "temperature": "41.7", "humidity": "55.5" }
+    },
+    { "type": "wokwi-photoresistor-sensor", "id": "ldr1", "top": 32, "left": -287.2, "attrs": {} }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "dht1:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "dht1:SDA", "esp:D15", "green", [ "v0" ] ],
+    [ "dht1:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "ldr1:AO", "esp:D34", "green", [ "h0" ] ],
+    [ "ldr1:VCC", "esp:3V3", "red", [ "h153.6", "v172.8" ] ],
+    [ "ldr1:GND", "esp:GND.1", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}
