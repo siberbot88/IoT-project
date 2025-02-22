@@ -5,11 +5,11 @@ import ujson
 import network
 from umqtt.simple import MQTTClient
 
-# **Konfigurasi WiFi**
+# Konfigurasi WiFi
 WIFI_SSID = "esp32"
 WIFI_PASS = "none1234"
 
-# **Konfigurasi MQTT Ubidots**
+# Konfigurasi MQTT Ubidots
 UBIDOTS_TOKEN = "BBUS-MClajoBNluAp2Bkkpj1eVLYzrX8LAU"
 DEVICE_LABEL = "sic6-esp32ee"
 MQTT_BROKER = "industrial.api.ubidots.com"
@@ -18,11 +18,12 @@ MQTT_USER = UBIDOTS_TOKEN
 MQTT_PASSWORD = ""
 MQTT_PUBLISH_TOPIC = f"/v1.6/devices/{DEVICE_LABEL}"
 
-# **Konfigurasi LED & Sensor**
+# Konfigurasi LED & Sensor
 led = Pin(4, Pin.OUT)
 sensor = dht.DHT11(Pin(5))
+pir = Pin(19, Pin.IN)  # Tambah konfigurasi PIR
 
-# **Fungsi Koneksi WiFi**
+# Fungsi Koneksi WiFi
 def do_connect():
     sta_if = network.WLAN(network.STA_IF)
     if not sta_if.isconnected():
@@ -40,7 +41,7 @@ def do_connect():
         print('Gagal terhubung ke WiFi!')
         raise SystemExit()
 
-# **Fungsi Koneksi ke MQTT**
+# Fungsi Koneksi ke MQTT
 def connect_mqtt():
     try:
         print("Menghubungkan ke Ubidots MQTT... ", end="")
@@ -52,7 +53,7 @@ def connect_mqtt():
         print("Gagal terhubung ke MQTT:", e)
         return None
 
-# **Mulai Program**
+# Mulai Program
 do_connect()
 time.sleep(2)
 mqtt_client = connect_mqtt()
@@ -61,15 +62,16 @@ if mqtt_client is None:
     print("Koneksi MQTT gagal, cek kembali pengaturan!")
     raise SystemExit()
 
-# **Loop utama**
+# Loop utama
 while True:
     try:
-        # **Baca Sensor**
+        # Baca Sensor
         sensor.measure()
         suhu = sensor.temperature()
         kelembaban = sensor.humidity()
+        gerakan = pir.value()  # Baca nilai PIR
 
-        # **Kontrol LED berdasarkan suhu**
+        # Kontrol LED berdasarkan suhu
         if suhu > 30:
             led.on()
             led_status = 1
@@ -79,19 +81,21 @@ while True:
             led_status = 0
             print("✅ Suhu normal. LED mati.")
 
-        # **Kirim Data ke Ubidots**
+        # Kirim Data ke Ubidots
         message = ujson.dumps({
             "temperature": {"value": suhu},
             "humidity": {"value": kelembaban},
-            "led": {"value": led_status}
+            "led": {"value": led_status},
+            "motion": {"value": gerakan}  # Tambah data PIR
         })
         mqtt_client.publish(MQTT_PUBLISH_TOPIC, message)
         print(f"📡 Data dikirim ke Ubidots: {message}")
+        print(f"🚨 Status Gerakan: {'Terdeteksi' if gerakan else 'Tidak Ada'}")
         
-        time.sleep(5)  # Kirim data setiap 5 detik
+        time.sleep(0.2)  # Kirim data setiap 5 detik
 
     except Exception as e:
         print("Error:", e)
         print("Mencoba reconnect dalam 5 detik...")
-        time.sleep(5)
+        time.sleep(1)
         mqtt_client = connect_mqtt()
