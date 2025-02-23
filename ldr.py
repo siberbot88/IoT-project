@@ -19,19 +19,17 @@ MQTT_PASSWORD = ""
 MQTT_PUBLISH_TOPIC = f"/v1.6/devices/{DEVICE_LABEL}"
 
 # Konfigurasi Hardware
-led = Pin(4, Pin.OUT)
-led_red = Pin(2, Pin.OUT)    # LED merah di GPIO2
-led_yellow = Pin(15, Pin.OUT) # LED kuning di GPIO15
-sensor = dht.DHT11(Pin(5))
-pir = Pin(19, Pin.IN)
-ldr = ADC(Pin(34))           # GPIO34 (ADC1 CH6)
-ldr.atten(ADC.ATTN_11DB)     # Rentang 0-3.3V
-ldr.width(ADC.WIDTH_12BIT)   # Resolusi 12-bit (0-4095)
+led = Pin(4, Pin.OUT)       # LED untuk indikator suhu
+led_red = Pin(2, Pin.OUT)   # LED merah untuk indikator cahaya redup
+sensor = dht.DHT11(Pin(5))  # Sensor DHT11 di GPIO5
+pir = Pin(19, Pin.IN)       # Sensor PIR di GPIO19
+ldr = ADC(Pin(34))          # Sensor LDR di GPIO34 (ADC1 CH6)
+ldr.atten(ADC.ATTN_11DB)    # Rentang 0-3.3V
+ldr.width(ADC.WIDTH_12BIT)  # Resolusi 12-bit (0-4095)
 
 # Kalibrasi LDR
-LDR_DARK_THRESHOLD = 2500    # Nilai saat kondisi redup (sesuaikan!)
-LDR_SAMPLES = 10             # Jumlah sample untuk rata-rata
-led_toggle = False            # Variabel toggle untuk LED
+LDR_DARK_THRESHOLD = 2500   # Nilai saat kondisi redup (sesuaikan!)
+LDR_SAMPLES = 10            # Jumlah sample untuk rata-rata
 
 def read_ldr():
     """Baca nilai LDR dengan rata-rata beberapa sample"""
@@ -83,13 +81,13 @@ while True:
     try:
         # Baca semua sensor
         sensor.measure()
-        ldr_value = read_ldr()
+        ldr_value = read_ldr()  # Gunakan fungsi baca rata-rata
         suhu = sensor.temperature()
         kelembaban = sensor.humidity()
         gerakan = pir.value()
 
         # Kontrol LED berdasarkan suhu
-        if suhu > 31:
+        if suhu > 30:
             led.on()
             led_status = 1
             print("🔥 Suhu tinggi! LED menyala.")
@@ -98,24 +96,15 @@ while True:
             led_status = 0
             print("✅ Suhu normal. LED mati.")
 
-        # Kontrol LED merah dan kuning berdasarkan LDR
+        # Kontrol LED merah berdasarkan LDR
         if ldr_value > LDR_DARK_THRESHOLD:
-            if led_toggle:
-                led_red.on()
-                led_yellow.off()
-                print("🔴 Cahaya redup! LED merah menyala.")
-            else:
-                led_red.off()
-                led_yellow.on()
-                print("🟡 Cahaya redup! LED kuning menyala.")
-            led_toggle = not led_toggle  # Toggle state
+            led_red.on()
+            print("🌑 Cahaya redup! LED merah menyala.")
         else:
             led_red.off()
-            led_yellow.off()
-            led_toggle = False  # Reset toggle
-            print("🌞 Cahaya terang. Semua LED mati.")
+            print("☀️ Cahaya terang. LED merah mati.")
 
-        # Kirim ke Ubidots
+        # Kirim data ke Ubidots
         payload = ujson.dumps({
             "temperature": suhu,
             "humidity": kelembaban,
@@ -125,8 +114,11 @@ while True:
         })
         mqtt_client.publish(MQTT_PUBLISH_TOPIC, payload)
         
+        # Tampilkan data di serial monitor
         print(f"📡 Data: Temp={suhu}C, Hum={kelembaban}%, LDR={ldr_value}")
+        print(f"💡 LED: {'ON' if led_status else 'OFF'}, LED Merah: {'ON' if led_red.value() else 'OFF'}")
         
+        # Delay 0.5 detik
         time.sleep(0.5)
 
     except Exception as e:
